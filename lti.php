@@ -169,13 +169,17 @@ function lti_edit(){
 	lti_sign_check();
     //lti_login_user();
     $r = lti_extract_menu_view_request( $_POST );
-    print_r($r); die("Edit page");
-    wp_redirect( 'archives/' . $r->custom_course_shortname );
+    //print_r($r); die("Edit page");
+    wp_redirect( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
+    //echo( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
 }
 
 function lti_view(){
-	die("View page");
+	//die("View page");
 	lti_sign_check();
+	$r = lti_extract_menu_view_request( $_POST );
+    //print_r($r); die("Edit page");
+    wp_redirect( 'pmwiki.php?n=' . $r->custom_course_shortname );
     //lti_login_user();
     //lti_create_course_post();
 }
@@ -403,7 +407,7 @@ function lti_provider_profile($secret) {
       </tp:contact>
       <tp:base_urls>
         <tp:base_url type="default">http://localhost/pmwiki/lti.php</tp:base_url>
-        <tp:base_url type="icon_default">http://localhost/pmwiki/pub/skins/pmwiki</tp:base_url>
+        <tp:base_url type="icon_default">http://localhost/pmwiki/pub/skins/pmwiki/</tp:base_url>
       </tp:base_urls>
     </tp:tool_instance>
     <tp:messages>
