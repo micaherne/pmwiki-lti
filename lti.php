@@ -169,8 +169,14 @@ function lti_edit(){
 	lti_sign_check();
     //lti_login_user();
     $r = lti_extract_menu_view_request( $_POST );
+    // check for admin or instructor role
+    $roles = split(',', $_POST['roles']);
+    if(in_array('Administrator', $roles) || in_array('Instructor', $roles)) {
+    	redirect( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');	
+    } else {
+    	die('Must have administrator or instructor permissions to edit');
+    }
     //print_r($r); die("Edit page");
-    wp_redirect( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
     //echo( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
 }
 
@@ -179,7 +185,7 @@ function lti_view(){
 	lti_sign_check();
 	$r = lti_extract_menu_view_request( $_POST );
     //print_r($r); die("Edit page");
-    wp_redirect( 'pmwiki.php?n=' . $r->custom_course_shortname );
+    redirect( 'pmwiki.php?n=' . $r->custom_course_shortname );
     //lti_login_user();
     //lti_create_course_post();
 }
@@ -270,9 +276,23 @@ function lti_sign_check() {
   unset( $_POST['mac'] );
   ksort( $_POST );
 
-  global $wpdb;
+  //global $wpdb;
   //$r = $wpdb->get_var( $wpdb->prepare( "select secret from {$wpdb->prefix}lti_consumers where tool_proxy_guid = %s", $guid ) );
-  $r = 'secret';
+if(! file_exists("lti_consumers/$guid")){
+  	die('Unable to write consumer data');
+  } else {
+  	$file_contents = file_get_contents("lti_consumers/$guid");
+  	if($file_contents === false) {
+  		die("Unable to read file $consumer_file");
+  	}
+  	$data = json_decode($file_contents);
+  	if(!is_null($data)) {
+  		$r = $data->secret;
+  	} else {
+  		die('Unable to read consumer data' . $file_contents);
+  	}
+  }
+  //$r = 'secret';
   if( $mac != base64_encode( hash( 'sha1', join( '', array_values( $_POST ) ) . $r, true ) ) ) {
     echo 'mac check fail';
     exit;
@@ -354,9 +374,15 @@ function lti_register() {
     echo 'failed to insert consumer information in local database';
     exit;
   }*/
+  if(! $consumer_file = fopen("lti_consumers/$guid", 'w')){
+  	die('Unable to write consumer data');
+  } else {
+  	$data = array( 'tool_proxy_guid' => $guid, 'consumer_guid' => $cguid, 'consumer_user_id' => $deployp->user_id, 'time' => time(), 'secret' => $secret );
+  	fwrite($consumer_file, json_encode($data));
+  }
 
   // redirect
-  wp_redirect( $deployp->launch_presentation_return_url . '&status=success', 301 );
+  redirect( $deployp->launch_presentation_return_url . '&status=success', 301 );
 }
 
 function lti_register_provider( $regep, $pprofile, $deployp ) {
@@ -407,7 +433,7 @@ function lti_provider_profile($secret) {
       </tp:contact>
       <tp:base_urls>
         <tp:base_url type="default">http://localhost/pmwiki/lti.php</tp:base_url>
-        <tp:base_url type="icon_default">http://localhost/pmwiki/pub/skins/pmwiki/</tp:base_url>
+        <tp:base_url type="icon_default">http://localhost/pmwiki/</tp:base_url>
       </tp:base_urls>
     </tp:tool_instance>
     <tp:messages>
@@ -425,7 +451,7 @@ function lti_provider_profile($secret) {
           </tp:message>
         </tp:messages>
         <tp:icons>
-          <pc:icon>pmwiki-32.gif</pc:icon>
+          <pc:icon>logo.png</pc:icon>
         </tp:icons>
         <tp:category_choice>
           <tp:category>context-tool-administration</tp:category>
@@ -443,7 +469,7 @@ function lti_provider_profile($secret) {
           </tp:message>
         </tp:messages>
         <tp:icons>
-          <pc:icon>pmwiki-32.gif</pc:icon>
+          <pc:icon>logo.png</pc:icon>
         </tp:icons>
         <tp:category_choice>
           <tp:category>context-tool</tp:category>
@@ -489,9 +515,9 @@ XML
 }
 
 function wp_generate_password($a, $b) {
-	return "secret";
+	return uniqid();
 }
 
-function wp_redirect($url, $status) {
+function redirect($url, $status) {
 	header("Location: $url");
 }
