@@ -1,18 +1,6 @@
 <?php
-/*
- Plugin Name: Lti
- Plugin URI: http://wordpress.org/#
- Description: Lti thing
- Author: me
- Version: 0.1
- */
-/*
- * try it with the p2 theme (http://wordpress.org/extend/themes/p2) with its
- * header removed.
- */
 /**
- * lti-moo, (partial) full LTI implementation for moodle
- * Copyright (C) 2011 University of Kent (kent.ac.uk)
+ * pmwiki-lti. Copyright 2011, University of Strathclyde.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,8 +34,6 @@
  *
  */
 
-
-
 define( 'LTI_TCP', 'http://www.imsglobal.org/xsd/imsltiTCP_v1p0' );
 define( 'LTI_PC', 'http://www.imsglobal.org/xsd/imsltiPC_v1p0' );
 define( 'LTI_SEC', 'http://www.imsglobal.org/xsd/imsltiSEC_v1p0' );
@@ -62,27 +48,6 @@ if(!isset($_GET['action'])) {
 		//die("Calling $function()");
 	} else {
 		die("Function $function doesn't exist");
-	}
-}
-function lti_install() {
-	global $wpdb;
-	global $lti_db_version;
-
-	$table_name = $wpdb->prefix . 'lti_consumers';
-	if( $wpdb->get_var("show tables like '$table_name'") != $table_name ) {
-		$sql = "CREATE TABLE " . $table_name . " (
-      id mediumint(9) NOT NULL AUTO_INCREMENT,
-      tool_proxy_guid varchar(255) NOT NULL,
-      consumer_guid varchar(255) NOT NULL,
-      consumer_user_id varchar(255),
-      time bigint(11) DEFAULT '0' NOT NULL,
-      secret varchar(255) not null,
-      UNIQUE KEY id (id)
-    );";
-
-		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-		dbDelta($sql);
-		add_option("lti_db_version", $lti_db_version);
 	}
 }
 
@@ -140,38 +105,12 @@ function lti_extract_deploymentrequest( $vars ) {
 	return (object) array_intersect_key( $vars, array_merge( lti_reg_packet(), lti_launch_packet() ) );
 }
 
-/*function lti_add_trigger($vars) {
- $vars[] = 'lti_deploy';
- $vars[] = 'lti_ping';
- $vars[] = 'lti_menu_view_request';
- return $vars;
- }
-
-
- function lti_trigger_check() {
- if(intval(get_query_var('lti_deploy')) == 1) {
- lti_register();
- } else if(intval(get_query_var('lti_ping')) == 1) {
- lti_ping();
- } else if(intval(get_query_var('lti_menu_view_request')) == 1) {
- lti_sign_check();
- lti_login_user();
- $r = lti_extract_menu_view_request( $_POST );
- wp_redirect( 'archives/' . $r->custom_course_shortname );
- } else if(intval(get_query_var('lti_menu_view_request')) == 2) {
- lti_sign_check();
- lti_login_user();
- lti_create_course_post();
- }
- }*/
-
 function lti_edit(){
 	lti_sign_check();
 	//lti_login_user();
 	$r = lti_extract_menu_view_request( $_POST );
 	// check for admin or instructor role
-	$roles = split(',', $_POST['roles']);
-	if(in_array('Administrator', $roles) || in_array('Instructor', $roles)) {
+	if(lti_has_role($r, 'Administrator') || lti_has_role($r, 'Instructor')) {
 		redirect( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
 	} else {
 		die('Must have administrator or instructor permissions to edit');
@@ -184,92 +123,58 @@ function lti_view(){
 	//die("View page");
 	lti_sign_check();
 	$r = lti_extract_menu_view_request( $_POST );
-	//print_r($r); die("Edit page");
-	redirect( 'pmwiki.php?n=' . $r->custom_course_shortname );
-	//lti_login_user();
-	//lti_create_course_post();
-}
-
-function lti_create_course_post() {
-	// if instructor then create if doesnt exist and send to admin page
-
-	$r = lti_extract_menu_view_request( $_POST );
-
-	if( false === strpos( $r->roles, 'Instructor' ) ) return;
-
-	// does post exist ?
-	global $wpdb;
-	$post_id = $wpdb->get_var( $wpdb->prepare("select ID from {$wpdb->prefix}posts where post_name = %s", $r->custom_course_shortname ) );
-	if( is_null( $post_id ) ) {
-		$pd = array();
-		$pd['post_title'] = $r->custom_course_title;
-		$pd['post_name'] = $r->custom_course_shortname;
-		$pd['post_content'] = 'Discuss your course in all its awesomeness.';
-		$post_id = wp_insert_post($pd);
-		wp_publish_post( $post_id );
-		// then make one and edit it, or just redirect to edit page??
+	
+	$page_name = lti_get_page_name($r);
+	if(lti_page_exists($page_name)) {
+		redirect( 'pmwiki.php?n=' .  $page_name);
 	}
-
-	wp_redirect( 'archives/' . $r->custom_course_shortname );
+	
+	// Check if person has instructor or admin privileges
+	if(lti_has_role($r, 'Administrator') || lti_has_role($r, 'Instructor')) {
+		lti_create_page($page_name, $r);
+		redirect( 'pmwiki.php?n=' .  $page_name);
+	} else {
+		die("This page doesn't exist");
+	}
 }
 
-/*
- function lti_return_link() {
- global $lti_launch_presentation_return_url;
- if( is_null( $lti_launch_presentation_return_url ) ) {
- $lti_launch_presentation_return_url = $_COOKIE['lti_launch_presentation_return_url'];
- }
- return $lti_launch_presentation_return_url;
- }
+function lti_has_role($request, $role) {
+	if(!isset($request->roles)) {
+		return false;
+	}
+	$roles = split(',', $request->roles);
+	return in_array($role, $roles);
+}
 
- function lti_course_name() {
- global $lti_custom_course_fullname;
- if( is_null( $lti_custom_course_fullname ) ) {
- $lti_custom_course_fullname = $_COOKIE['lti_custom_course_fullname'];
- }
- return $lti_custom_course_fullname;
- }
+function lti_page_exists($page) {
+	return file_exists('wiki.d/' . $page);
+}
 
- function lti_login_user() {
- $r = lti_extract_menu_view_request( $_POST );
- // is user_id existing?
- global $wpdb;
- $user_id = $wpdb->get_var( $wpdb->prepare("select ID from {$wpdb->prefix}users where user_login = %s", $r->user_id) );
- //  no? then create
- if( is_null( $user_id ) ) {
- $user_data['user_login'] = $r->user_id;
- $user_data['display_name'] = $r->custom_person_fullname;
- if( false === strpos( $r->roles, 'Instructor' ) ) {
- $user_data['role'] = 'subscriber';
- } else {
- $user_data['role'] = 'author';
- }
- $user_data['user_pass'] = substr( md5( uniqid( microtime() ) ), 0, 7);
- $user_data['user_email'] = $r->custom_person_email;
- $user_id = wp_insert_user( $user_data );
- }
- //  yes? then login
- wp_set_current_user( $user_id );
- wp_clear_auth_cookie();
- wp_set_auth_cookie($user_id);
- }
+function lti_create_page($page, $request) {
+	if($f = fopen('wiki.d/' . $page, 'w')) {
+		fwrite($f, 'text=Welcome to the course page for ' . $request->custom_course_shortname);
+		fclose($f);
+	}
+	// try to create edit password 
+	$page_group = array_shift(split('\.', $page));
+	
+	if(!is_null($page_group)) {
+		if($f = fopen('local/' . $page_group . '.php', 'w')) {
+			fwrite($f, "<?php \$DefaultPasswords['edit'] = crypt('" . lti_get_password($request, 'edit') . "'); ");
+			fclose($f);
+		}
+	}
+}
 
- add_filter('request', 'lti_request_filter');
- function lti_request_filter($request) {
- if( intval( $request['lti_menu_view_request'] ) ) {
- $r = lti_extract_menu_view_request( $_POST );
- $request['name'] = $r->custom_course_shortname;
+function lti_get_password($request, $type) {
+	$consumer = lti_get_consumer_data($request->tool_proxy_guid);
+	return sha1($type . $consumer->secret);
+}
 
- global $lti_launch_presentation_return_url;
- global $lti_custom_course_fullname;
- $lti_custom_course_fullname = $r->custom_course_title;
- $lti_launch_presentation_return_url = '<a class="secondary" href='.$r->launch_presentation_return_url.'>' . $r->custom_course_shortname . '</a>';
- setcookie( 'lti_launch_presentation_return_url', $lti_launch_presentation_return_url );
- setcookie( 'lti_custom_course_fullname', $lti_custom_course_fullname);
- }
- return $request;
- }
- */
+// TODO: Currently requires unique shortnames. For multiple consumers, this probably won't do.
+function lti_get_page_name($request) {
+	return $request->custom_course_shortname . '.' . $request->custom_course_shortname;
+}
 
 function lti_get_consumer_data($guid) {
 	if(! file_exists("lti_consumers/$guid")){
@@ -526,4 +431,5 @@ function wp_generate_password($a, $b) {
 
 function redirect($url, $status) {
 	header("Location: $url");
+	exit;
 }
