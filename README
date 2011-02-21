@@ -22,5 +22,10 @@ Usage
 
 Point your LTI consumer at http://localhost/pmwiki/lti.php?action=register to register the tool.
 
+License
+-------
+
+This code is freely available under the same GPL license as PMWiki: http://www.gnu.org/copyleft/gpl.html
+
 -----------------------------------------
 Michael Aherne, University of Strathclyde
