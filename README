@@ -3,7 +3,9 @@ LTI Interface For PMWiki
 
 This script provides a very basic Full LTI compliant interface to PMWiki to allow it to be used as a standalone wiki tool from any LTI consumer.
 
-It was created as an entry for the EILE Project Full LTI challenge at dev8D 2011. (http://wiki.2011.dev8d.org/w/Bounties#Enabling_Integrated_Learning_Environments_.28EILE.29_Project_.28JISC_Funded.29). It is intended as a demonstration of how LTI registration and launch can be applied to an existing tool, rather than as a fully-featured LTI-compliant wiki implementation.
+It was created as an entry for the EILE Project Full LTI challenge at dev8D 2011 (http://wiki.2011.dev8d.org/w/Bounties#Enabling_Integrated_Learning_Environments_.28EILE.29_Project_.28JISC_Funded.29). It is intended as a demonstration of how LTI registration and launch can be applied to an existing tool, rather than as a fully-featured LTI-compliant wiki implementation.
+
+The code is based on the Full LTI Wordpress implementation by the EILE Project at the University of Kent (http://blogs.kent.ac.uk/eile/)
 
 Requirements
 ------------
