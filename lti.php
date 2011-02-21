@@ -111,12 +111,21 @@ function lti_edit(){
 	$r = lti_extract_menu_view_request( $_POST );
 	// check for admin or instructor role
 	if(lti_has_role($r, 'Administrator') || lti_has_role($r, 'Instructor')) {
-		redirect( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
+		// redirect( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
+		lti_do_edit($r);
 	} else {
 		die('Must have administrator or instructor permissions to edit');
 	}
 	//print_r($r); die("Edit page");
 	//echo( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
+}
+
+function lti_do_edit($request) {
+	$page_name = lti_get_page_name($request);
+	$html = '<body onload="document.authform.submit()"><form name="authform" method="post" action="/pmwiki/pmwiki.php?n=' . $page_name . '?action=edit">
+<input type="password" class="inputbox" name="authpw" value="' . lti_get_password($request, 'edit') . '>
+</form></body>';
+	die($html);
 }
 
 function lti_view(){
@@ -142,7 +151,7 @@ function lti_has_role($request, $role) {
 	if(!isset($request->roles)) {
 		return false;
 	}
-	$roles = split(',', $request->roles);
+	$roles = explode(',', $request->roles);
 	return in_array($role, $roles);
 }
 
@@ -152,11 +161,11 @@ function lti_page_exists($page) {
 
 function lti_create_page($page, $request) {
 	if($f = fopen('wiki.d/' . $page, 'w')) {
-		fwrite($f, 'text=Welcome to the course page for ' . $request->custom_course_shortname);
+		fwrite($f, 'text=Welcome to the course page for ' . $request->custom_course_shortname . ' (' . $request->custom_course_title . ')');
 		fclose($f);
 	}
 	// try to create edit password 
-	$page_group = array_shift(split('\.', $page));
+	$page_group = array_shift(explode('\.', $page));
 	
 	if(!is_null($page_group)) {
 		if($f = fopen('local/' . $page_group . '.php', 'w')) {
