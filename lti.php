@@ -109,8 +109,14 @@ function lti_edit(){
 	lti_sign_check();
 	//lti_login_user();
 	$r = lti_extract_menu_view_request( $_POST );
+	
+	$page_name = lti_get_page_name($r);
+	
 	// check for admin or instructor role
 	if(lti_has_role($r, 'Administrator') || lti_has_role($r, 'Instructor')) {
+		if(!lti_page_exists($page_name)) {
+			lti_create_page($page_name, $r);
+		}
 		// redirect( 'pmwiki.php?n=' . $r->custom_course_shortname . '.' . $r->custom_course_shortname . '?action=edit');
 		lti_do_edit($r);
 	} else {
@@ -165,7 +171,7 @@ function lti_create_page($page, $request) {
 		fclose($f);
 	}
 	// try to create edit password 
-	$page_group = array_shift(explode('\.', $page));
+	$page_group = array_shift(explode('.', $page));
 	
 	if(!is_null($page_group)) {
 		if($f = fopen('local/' . $page_group . '.php', 'w')) {
@@ -180,7 +186,7 @@ function lti_get_password($request, $type) {
 	return sha1($type . $consumer->secret);
 }
 
-// TODO: Currently requires unique shortnames. For multiple consumers, this probably won't do.
+// TODO: Currently requires unique shortnames. For multiple consumers, this won't do.
 function lti_get_page_name($request) {
 	return $request->custom_course_shortname . '.' . $request->custom_course_shortname;
 }
