@@ -122,9 +122,9 @@ function lti_edit(){
 
 function lti_do_edit($request) {
 	$page_name = lti_get_page_name($request);
-	$html = '<body onload="document.authform.submit()"><form name="authform" method="post" action="/pmwiki/pmwiki.php?n=' . $page_name . '?action=edit">
+	$html = '<body onload="document.authform.submit()"><form style="display:none" name="authform" method="post" action="/pmwiki/pmwiki.php?n=' . $page_name . '?action=edit">
 <input type="password" class="inputbox" name="authpw" value="' . lti_get_password($request, 'edit') . '>
-</form></body>';
+</form><p>Loading page...</p><noscript>This feature requires JavaScript to be enabled in your browser</noscript></body>';
 	die($html);
 }
 
